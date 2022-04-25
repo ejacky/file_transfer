@@ -106,6 +106,7 @@ func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err e
 
 	req, err := stream.Recv()
 	fileType := req.GetInfo().FileType
+	// todo check upload folder exist
 	filePath := fmt.Sprintf("%s/%d%s", "upload", randInt, fileType)
 	file, err := os.Create(filePath)
 	defer file.Close()
@@ -128,9 +129,8 @@ func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err e
 			return err
 		}
 
-
 		chunk := req.GetContent()
-		fmt.Printf("%b\t%s", chunk,string(chunk))
+		//fmt.Printf("%b\t%s", chunk,string(chunk))
 		_, err = data.Write(chunk)
 		if err != nil {
 			fmt.Println("byte buffer write data error")
@@ -153,8 +153,7 @@ END:
 		Message: "Upload received with success",
 		Code:    messaging.UploadStatusCode_Ok,
 	})
-	s.filePath <-filePath
-
+	s.filePath <- filePath
 
 	fmt.Println("upload received success")
 	if err != nil {

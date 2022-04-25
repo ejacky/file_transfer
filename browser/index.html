@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <link rel="stylesheet" type="text/css" href="style.css" />
     <script src="https://cdn.bootcss.com/jquery/1.7.1/jquery.min.js"></script>
-    <script src="uploader.js"></script>
+    <script src="./static/uploader.js"></script>
   </head>
   <body>
     <div id="frame">
@@ -33,15 +33,15 @@
             <td width="100%"><div class="progress-container"><div class="progress-bar"></div></div></td>
             <td class="progress-text" nowrap="nowrap"></td>
             <td class="progress-pause" nowrap="nowrap">
-              <a href="javascript:;" onclick="r.upload()" class="progress-resume-link"><img src="resume.png" title="Resume upload" /></a>
-              <a href="javascript:;" onclick="r.pause()" class="progress-pause-link"><img src="pause.png" title="Pause upload" /></a>
-              <a href="javascript:;" onclick="r.cancel()" class="progress-cancel-link"><img src="cancel.png" title="Cancel upload" /></a>
+              <a href="javascript:;" onclick="r.upload()" class="progress-resume-link"><img src="./static/resume.png" title="Resume upload" /></a>
+              <a href="javascript:;" onclick="r.pause()" class="progress-pause-link"><img src="./static/pause.png" title="Pause upload" /></a>
+              <a href="javascript:;" onclick="r.cancel()" class="progress-cancel-link"><img src="./static/cancel.png" title="Cancel upload" /></a>
             </td>
           </tr>
         </table>
       </div>
       <ul class="uploader-list"></ul>
     </div>
-    <script src="./app.js"></script>
+    <script src="./static/app.js"></script>
   </body>
 </html>
