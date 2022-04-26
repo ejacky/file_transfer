@@ -19,15 +19,20 @@ import (
 )
 
 func main() {
+	http.HandleFunc("/", mpupload)
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/", index)
 	http.HandleFunc("/upload", uploadFile)
+	http.HandleFunc("/file/mpupload/init", uploadFile)
+	http.HandleFunc("/file/mpupload/uppart", uploadFile)
+	http.HandleFunc("/file/mpupload/complete", uploadFile)
+	http.HandleFunc("/file/mpupload/cancel", uploadFile)
+
 	log.Fatal(http.ListenAndServe("localhost:8888", nil))
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("index.html")
+func mpupload(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("mpupload.html")
 	if err != nil {
 		log.Println(err)
 	}
@@ -37,6 +42,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 func uploadFile(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("File Upload Endpoint Hit")
+	fmt.Println(r.Header)
 
 	var (
 		chunkSize       = 1 << 12
