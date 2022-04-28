@@ -140,7 +140,14 @@ func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err e
 		return err
 	}
 	// todo check upload folder exist
+	err = os.Mkdir(s.fileInfo.UploadID, 0755)
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+
 	filePath := fmt.Sprintf("%s/%d", s.fileInfo.UploadID, req.GetInfo().ChunkIndex)
+	log.Println(filePath)
+
 	file, err := os.Create(filePath)
 	defer file.Close()
 	for {
@@ -175,6 +182,7 @@ func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err e
 
 		_, err = data.WriteTo(file)
 		if err != nil {
+			log.Fatal(err)
 			return fmt.Errorf("cannot write image to file: %w", err)
 		}
 	}
@@ -188,12 +196,13 @@ END:
 	})
 	s.filePath <- filePath
 
-	fmt.Println("upload received success")
 	if err != nil {
 		err = errors.Wrapf(err,
 			"failed to send status code")
 		return
 	}
+
+	fmt.Println("upload received success")
 
 	return
 }
