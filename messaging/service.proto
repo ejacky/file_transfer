@@ -3,27 +3,54 @@ syntax = "proto3";
 package messaging;
 
 service GuploadService {
-        rpc Upload(stream Chunk) returns (UploadStatus) {}
+    rpc Upload(stream Chunk) returns (UploadStatus) {}
+    rpc Init(InitReq) returns (InitAck) {}
+    rpc Complete(InitReq) returns (InitAck) {}
+    rpc Cancel(InitReq) returns (InitAck) {}
 }
 
 message Chunk {
-  oneof data {
+    oneof data {
         bytes Content = 1;
-        FileInfo Info = 2;
+        ChunkInfo Info = 2;
       }
 }
 
-message FileInfo {
-  string FileType = 1;
+message ChunkInfo {
+    string FileType = 1;
+    uint64 ChunkIndex = 2;
+    string CheckHash = 3;
+    string UploadID = 4;
 }
 
 enum UploadStatusCode {
-        Unknown = 0;
-        Ok = 1;
-        Failed = 2;
+    Unknown = 0;
+    Ok = 1;
+    Failed = 2;
 }
 
 message UploadStatus {
-        string Message = 1;
-        UploadStatusCode Code = 2;
+    string Message = 1;
+    UploadStatusCode Code = 2;
+}
+
+message InitReq {
+
+    uint64 FileSize = 1;
+    string FileHash = 2;
+}
+
+message InitAck {
+  int32 code = 1;
+  string msg = 2;
+  FileInfo data = 3;
+}
+
+message FileInfo {
+    uint64 ChunkSize   = 1;
+    uint64 ChunkCount  = 2;
+    repeated uint64 ChunkExists  = 3; // todo
+    string  UploadID   = 4;
+    uint64 FileSize = 5;
+    string FileHash = 6;
 }

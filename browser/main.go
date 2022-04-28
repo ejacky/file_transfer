@@ -7,82 +7,107 @@
 package main
 
 import (
-	"errors"
 	"file_transfer/core"
+	"file_transfer/messaging"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
-	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strings"
+	"strconv"
 )
 
+var (
+	chunkSize       = 1 << 12
+	http2           = false
+	address         = "localhost:8877"
+	rootCertificate = ""
+	compress        = false
+	client          core.Client
+)
+
+func init() {
+	grpcClient, err := core.NewClientGRPC(core.ClientGRPCConfig{
+		Address:         address,
+		RootCertificate: rootCertificate,
+		Compress:        compress,
+		ChunkSize:       chunkSize,
+	})
+	must(err)
+	client = &grpcClient
+
+}
+
 func main() {
-	http.HandleFunc("/", mpupload)
+
+	// 页面
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/upload", uploadFile)
-	http.HandleFunc("/file/mpupload/init", uploadFile)
-	http.HandleFunc("/file/mpupload/uppart", uploadFile)
-	http.HandleFunc("/file/mpupload/complete", uploadFile)
-	http.HandleFunc("/file/mpupload/cancel", uploadFile)
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		file, err := os.Open("index.html")
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		content, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		_, err = writer.Write(content)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+	})
+
+	// 接口
+	http.HandleFunc("/file/mpupload/init", mpuploadInit)
+	http.HandleFunc("/file/mpupload/uppart", mpuploadUppart)
+	//http.HandleFunc("/file/mpupload/complete", uploadFile)
+	//http.HandleFunc("/file/mpupload/cancel", uploadFile)
 
 	log.Fatal(http.ListenAndServe("localhost:8888", nil))
 }
 
-func mpupload(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("mpupload.html")
-	if err != nil {
-		log.Println(err)
-	}
-	t.Execute(w, nil)
+func mpuploadInit(w http.ResponseWriter, r *http.Request) {
 
+	fileHash := r.FormValue("filehash")
+	fileSize, err := strconv.Atoi(r.FormValue("filesize"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	grpcClient, ok := client.(*core.ClientGRPC)
+	if ok {
+		data, err := grpcClient.Client.Init(context.Background(), &messaging.InitReq{
+			FileHash: fileHash,
+			FileSize: uint64(fileSize),
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		resultOmitEmptyJson(w, data)
+	} else {
+		// todo 不支持
+		log.Println("just support grpc")
+	}
 }
 
-func uploadFile(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("File Upload Endpoint Hit")
-	fmt.Println(r.Header)
-
-	var (
-		chunkSize       = 1 << 12
-		http2           = false
-		address         = "localhost:8877"
-		rootCertificate = ""
-		compress        = false
-		client          core.Client
-	)
-
-	if address == "" {
-		must(errors.New("address"))
+func resultOmitEmptyJson(w http.ResponseWriter, data proto.Message) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	m := jsonpb.Marshaler{EmitDefaults: true}
+	err := m.Marshal(w, data.(proto.Message))
+	if err != nil {
+		log.Fatal("序列化 proto 失败:", err)
 	}
+}
 
-	switch {
-	case http2:
-		if rootCertificate == "" {
-			must(errors.New("http2 requires root-certificate to be supplied"))
-		}
-
-		if !strings.HasPrefix(address, "https://") {
-			address = "https://" + address
-		}
-
-		http2Client, err := core.NewClientH2(core.ClientH2Config{
-			Address:         address,
-			RootCertificate: rootCertificate,
-		})
-		must(err)
-		client = &http2Client
-	default:
-		grpcClient, err := core.NewClientGRPC(core.ClientGRPCConfig{
-			Address:         address,
-			RootCertificate: rootCertificate,
-			Compress:        compress,
-			ChunkSize:       chunkSize,
-		})
-		must(err)
-		client = &grpcClient
-	}
+func mpuploadUppart(w http.ResponseWriter, r *http.Request) {
 
 	stat, err := client.UploadFile(context.Background(), r)
 	must(err)

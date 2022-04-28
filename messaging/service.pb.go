@@ -96,7 +96,7 @@ type Chunk_Content struct {
 }
 
 type Chunk_Info struct {
-	Info *FileInfo `protobuf:"bytes,2,opt,name=Info,proto3,oneof"`
+	Info *ChunkInfo `protobuf:"bytes,2,opt,name=Info,proto3,oneof"`
 }
 
 func (*Chunk_Content) isChunk_Data() {}
@@ -117,7 +117,7 @@ func (m *Chunk) GetContent() []byte {
 	return nil
 }
 
-func (m *Chunk) GetInfo() *FileInfo {
+func (m *Chunk) GetInfo() *ChunkInfo {
 	if x, ok := m.GetData().(*Chunk_Info); ok {
 		return x.Info
 	}
@@ -132,41 +132,65 @@ func (*Chunk) XXX_OneofWrappers() []interface{} {
 	}
 }
 
-type FileInfo struct {
+type ChunkInfo struct {
 	FileType             string   `protobuf:"bytes,1,opt,name=FileType,proto3" json:"FileType,omitempty"`
+	ChunkIndex           uint64   `protobuf:"varint,2,opt,name=ChunkIndex,proto3" json:"ChunkIndex,omitempty"`
+	CheckHash            string   `protobuf:"bytes,3,opt,name=CheckHash,proto3" json:"CheckHash,omitempty"`
+	UploadID             string   `protobuf:"bytes,4,opt,name=UploadID,proto3" json:"UploadID,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *FileInfo) Reset()         { *m = FileInfo{} }
-func (m *FileInfo) String() string { return proto.CompactTextString(m) }
-func (*FileInfo) ProtoMessage()    {}
-func (*FileInfo) Descriptor() ([]byte, []int) {
+func (m *ChunkInfo) Reset()         { *m = ChunkInfo{} }
+func (m *ChunkInfo) String() string { return proto.CompactTextString(m) }
+func (*ChunkInfo) ProtoMessage()    {}
+func (*ChunkInfo) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a0b84a42fa06f626, []int{1}
 }
 
-func (m *FileInfo) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_FileInfo.Unmarshal(m, b)
+func (m *ChunkInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ChunkInfo.Unmarshal(m, b)
 }
-func (m *FileInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_FileInfo.Marshal(b, m, deterministic)
+func (m *ChunkInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ChunkInfo.Marshal(b, m, deterministic)
 }
-func (m *FileInfo) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_FileInfo.Merge(m, src)
+func (m *ChunkInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChunkInfo.Merge(m, src)
 }
-func (m *FileInfo) XXX_Size() int {
-	return xxx_messageInfo_FileInfo.Size(m)
+func (m *ChunkInfo) XXX_Size() int {
+	return xxx_messageInfo_ChunkInfo.Size(m)
 }
-func (m *FileInfo) XXX_DiscardUnknown() {
-	xxx_messageInfo_FileInfo.DiscardUnknown(m)
+func (m *ChunkInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChunkInfo.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_FileInfo proto.InternalMessageInfo
+var xxx_messageInfo_ChunkInfo proto.InternalMessageInfo
 
-func (m *FileInfo) GetFileType() string {
+func (m *ChunkInfo) GetFileType() string {
 	if m != nil {
 		return m.FileType
+	}
+	return ""
+}
+
+func (m *ChunkInfo) GetChunkIndex() uint64 {
+	if m != nil {
+		return m.ChunkIndex
+	}
+	return 0
+}
+
+func (m *ChunkInfo) GetCheckHash() string {
+	if m != nil {
+		return m.CheckHash
+	}
+	return ""
+}
+
+func (m *ChunkInfo) GetUploadID() string {
+	if m != nil {
+		return m.UploadID
 	}
 	return ""
 }
@@ -218,34 +242,248 @@ func (m *UploadStatus) GetCode() UploadStatusCode {
 	return UploadStatusCode_Unknown
 }
 
+type InitReq struct {
+	FileSize             uint64   `protobuf:"varint,1,opt,name=FileSize,proto3" json:"FileSize,omitempty"`
+	FileHash             string   `protobuf:"bytes,2,opt,name=FileHash,proto3" json:"FileHash,omitempty"`
+	FileName             string   `protobuf:"bytes,3,opt,name=FileName,proto3" json:"FileName,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InitReq) Reset()         { *m = InitReq{} }
+func (m *InitReq) String() string { return proto.CompactTextString(m) }
+func (*InitReq) ProtoMessage()    {}
+func (*InitReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a0b84a42fa06f626, []int{3}
+}
+
+func (m *InitReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InitReq.Unmarshal(m, b)
+}
+func (m *InitReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InitReq.Marshal(b, m, deterministic)
+}
+func (m *InitReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InitReq.Merge(m, src)
+}
+func (m *InitReq) XXX_Size() int {
+	return xxx_messageInfo_InitReq.Size(m)
+}
+func (m *InitReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_InitReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InitReq proto.InternalMessageInfo
+
+func (m *InitReq) GetFileSize() uint64 {
+	if m != nil {
+		return m.FileSize
+	}
+	return 0
+}
+
+func (m *InitReq) GetFileHash() string {
+	if m != nil {
+		return m.FileHash
+	}
+	return ""
+}
+
+func (m *InitReq) GetFileName() string {
+	if m != nil {
+		return m.FileName
+	}
+	return ""
+}
+
+type InitAck struct {
+	Code                 int32     `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	Msg                  string    `protobuf:"bytes,2,opt,name=msg,proto3" json:"msg,omitempty"`
+	Data                 *FileInfo `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
+}
+
+func (m *InitAck) Reset()         { *m = InitAck{} }
+func (m *InitAck) String() string { return proto.CompactTextString(m) }
+func (*InitAck) ProtoMessage()    {}
+func (*InitAck) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a0b84a42fa06f626, []int{4}
+}
+
+func (m *InitAck) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InitAck.Unmarshal(m, b)
+}
+func (m *InitAck) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InitAck.Marshal(b, m, deterministic)
+}
+func (m *InitAck) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InitAck.Merge(m, src)
+}
+func (m *InitAck) XXX_Size() int {
+	return xxx_messageInfo_InitAck.Size(m)
+}
+func (m *InitAck) XXX_DiscardUnknown() {
+	xxx_messageInfo_InitAck.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InitAck proto.InternalMessageInfo
+
+func (m *InitAck) GetCode() int32 {
+	if m != nil {
+		return m.Code
+	}
+	return 0
+}
+
+func (m *InitAck) GetMsg() string {
+	if m != nil {
+		return m.Msg
+	}
+	return ""
+}
+
+func (m *InitAck) GetData() *FileInfo {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+type FileInfo struct {
+	ChunkSize            uint64   `protobuf:"varint,1,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
+	ChunkCount           uint64   `protobuf:"varint,2,opt,name=ChunkCount,proto3" json:"ChunkCount,omitempty"`
+	ChunkExists          []uint64 `protobuf:"varint,3,rep,packed,name=ChunkExists,proto3" json:"ChunkExists,omitempty"`
+	UploadID             string   `protobuf:"bytes,4,opt,name=UploadID,proto3" json:"UploadID,omitempty"`
+	FileSize             uint64   `protobuf:"varint,5,opt,name=FileSize,proto3" json:"FileSize,omitempty"`
+	FileHash             string   `protobuf:"bytes,6,opt,name=FileHash,proto3" json:"FileHash,omitempty"`
+	FileName             string   `protobuf:"bytes,7,opt,name=FileName,proto3" json:"FileName,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *FileInfo) Reset()         { *m = FileInfo{} }
+func (m *FileInfo) String() string { return proto.CompactTextString(m) }
+func (*FileInfo) ProtoMessage()    {}
+func (*FileInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a0b84a42fa06f626, []int{5}
+}
+
+func (m *FileInfo) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_FileInfo.Unmarshal(m, b)
+}
+func (m *FileInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_FileInfo.Marshal(b, m, deterministic)
+}
+func (m *FileInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FileInfo.Merge(m, src)
+}
+func (m *FileInfo) XXX_Size() int {
+	return xxx_messageInfo_FileInfo.Size(m)
+}
+func (m *FileInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_FileInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FileInfo proto.InternalMessageInfo
+
+func (m *FileInfo) GetChunkSize() uint64 {
+	if m != nil {
+		return m.ChunkSize
+	}
+	return 0
+}
+
+func (m *FileInfo) GetChunkCount() uint64 {
+	if m != nil {
+		return m.ChunkCount
+	}
+	return 0
+}
+
+func (m *FileInfo) GetChunkExists() []uint64 {
+	if m != nil {
+		return m.ChunkExists
+	}
+	return nil
+}
+
+func (m *FileInfo) GetUploadID() string {
+	if m != nil {
+		return m.UploadID
+	}
+	return ""
+}
+
+func (m *FileInfo) GetFileSize() uint64 {
+	if m != nil {
+		return m.FileSize
+	}
+	return 0
+}
+
+func (m *FileInfo) GetFileHash() string {
+	if m != nil {
+		return m.FileHash
+	}
+	return ""
+}
+
+func (m *FileInfo) GetFileName() string {
+	if m != nil {
+		return m.FileName
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterEnum("messaging.UploadStatusCode", UploadStatusCode_name, UploadStatusCode_value)
 	proto.RegisterType((*Chunk)(nil), "messaging.Chunk")
-	proto.RegisterType((*FileInfo)(nil), "messaging.FileInfo")
+	proto.RegisterType((*ChunkInfo)(nil), "messaging.ChunkInfo")
 	proto.RegisterType((*UploadStatus)(nil), "messaging.UploadStatus")
+	proto.RegisterType((*InitReq)(nil), "messaging.InitReq")
+	proto.RegisterType((*InitAck)(nil), "messaging.InitAck")
+	proto.RegisterType((*FileInfo)(nil), "messaging.FileInfo")
 }
 
 func init() { proto.RegisterFile("service.proto", fileDescriptor_a0b84a42fa06f626) }
 
 var fileDescriptor_a0b84a42fa06f626 = []byte{
-	// 261 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x90, 0xc1, 0x4b, 0xc3, 0x30,
-	0x14, 0xc6, 0x9b, 0x52, 0x53, 0xf7, 0x36, 0x47, 0x78, 0x1e, 0x2c, 0xf5, 0x32, 0x7a, 0x90, 0xea,
-	0xa1, 0x42, 0x77, 0xf0, 0x6e, 0x61, 0x6e, 0x07, 0x11, 0xaa, 0x13, 0x3c, 0x46, 0x1b, 0x67, 0x69,
-	0x4d, 0xca, 0x9a, 0x2a, 0xfe, 0xf7, 0xb2, 0x94, 0x94, 0x22, 0x78, 0xcb, 0xcb, 0xf7, 0xbd, 0xdf,
-	0xfb, 0xf8, 0xe0, 0xa4, 0x15, 0xfb, 0xaf, 0xf2, 0x4d, 0x24, 0xcd, 0x5e, 0x69, 0x85, 0x93, 0x4f,
-	0xd1, 0xb6, 0x7c, 0x57, 0xca, 0x5d, 0xf4, 0x0c, 0x47, 0xd9, 0x47, 0x27, 0x2b, 0x0c, 0xc1, 0xcf,
-	0x94, 0xd4, 0x42, 0xea, 0x80, 0x2c, 0x48, 0x3c, 0x5b, 0x3b, 0xb9, 0xfd, 0xc0, 0x4b, 0xf0, 0x36,
-	0xf2, 0x5d, 0x05, 0xee, 0x82, 0xc4, 0xd3, 0xf4, 0x34, 0x19, 0xd6, 0x93, 0x55, 0x59, 0x8b, 0x83,
-	0xb4, 0x76, 0x72, 0x63, 0xb9, 0xa5, 0xe0, 0x15, 0x5c, 0xf3, 0xe8, 0x02, 0x8e, 0xad, 0x86, 0x61,
-	0xff, 0x7e, 0xfa, 0x69, 0x84, 0x61, 0x4f, 0xf2, 0x61, 0x8e, 0x5e, 0x60, 0xb6, 0x6d, 0x6a, 0xc5,
-	0x8b, 0x47, 0xcd, 0x75, 0xd7, 0x62, 0x00, 0xfe, 0xbd, 0xa1, 0x5b, 0xab, 0x1d, 0xf1, 0x1a, 0xbc,
-	0x4c, 0x15, 0xc2, 0x84, 0x98, 0xa7, 0xe7, 0xa3, 0x10, 0x63, 0xc0, 0xc1, 0x92, 0x1b, 0xe3, 0xd5,
-	0x12, 0xd8, 0x5f, 0x05, 0xa7, 0xe0, 0x6f, 0x65, 0x25, 0xd5, 0xb7, 0x64, 0x0e, 0x52, 0x70, 0x1f,
-	0x2a, 0x46, 0x10, 0x80, 0xae, 0x78, 0x59, 0x8b, 0x82, 0xb9, 0xe9, 0x06, 0xe6, 0x77, 0x5d, 0xbf,
-	0xd5, 0x57, 0x86, 0x37, 0x40, 0x7b, 0x0c, 0xb2, 0xd1, 0x4d, 0x53, 0x5a, 0x78, 0xf6, 0x4f, 0x8a,
-	0xc8, 0x89, 0xc9, 0x2b, 0x35, 0x65, 0x2f, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x85, 0xc4, 0xa6,
-	0x10, 0x7d, 0x01, 0x00, 0x00,
+	// 482 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x53, 0xc1, 0x6e, 0xd3, 0x40,
+	0x10, 0xb5, 0x13, 0xc7, 0x6e, 0x26, 0xa5, 0xb2, 0x06, 0x24, 0xac, 0x50, 0xa1, 0xc8, 0x17, 0xa2,
+	0x1e, 0x02, 0x72, 0x91, 0x38, 0x17, 0x43, 0x49, 0x0e, 0x80, 0xb4, 0xa5, 0x02, 0x0e, 0x1c, 0x16,
+	0x7b, 0x49, 0x2d, 0x3b, 0xbb, 0xa1, 0x5e, 0x43, 0xe1, 0xc6, 0x6f, 0x72, 0xe7, 0x3f, 0xd0, 0xee,
+	0xda, 0x8e, 0x13, 0x89, 0x88, 0xde, 0x66, 0xde, 0xce, 0xbc, 0x7d, 0x33, 0x6f, 0x17, 0xee, 0x94,
+	0xec, 0xfa, 0x5b, 0x96, 0xb0, 0xd9, 0xfa, 0x5a, 0x48, 0x81, 0xc3, 0x15, 0x2b, 0x4b, 0xba, 0xcc,
+	0xf8, 0x32, 0x7c, 0x0f, 0x83, 0xf8, 0xaa, 0xe2, 0x39, 0x8e, 0xc1, 0x8b, 0x05, 0x97, 0x8c, 0xcb,
+	0xc0, 0x9e, 0xd8, 0xd3, 0xc3, 0xb9, 0x45, 0x1a, 0x00, 0x4f, 0xc0, 0x59, 0xf0, 0x2f, 0x22, 0xe8,
+	0x4d, 0xec, 0xe9, 0x28, 0xba, 0x37, 0x6b, 0xdb, 0x67, 0xba, 0x57, 0x9d, 0xcd, 0x2d, 0xa2, 0x6b,
+	0x9e, 0xbb, 0xe0, 0xa4, 0x54, 0xd2, 0xf0, 0x97, 0x0d, 0xc3, 0xf6, 0x14, 0xc7, 0x70, 0x70, 0x9e,
+	0x15, 0xec, 0xdd, 0x8f, 0x35, 0xd3, 0xf4, 0x43, 0xd2, 0xe6, 0xf8, 0x10, 0xa0, 0x2e, 0x4c, 0xd9,
+	0x8d, 0xbe, 0xc3, 0x21, 0x1d, 0x04, 0x8f, 0x15, 0x11, 0x4b, 0xf2, 0x39, 0x2d, 0xaf, 0x82, 0xbe,
+	0x6e, 0xde, 0x00, 0x8a, 0xf9, 0x72, 0x5d, 0x08, 0x9a, 0x2e, 0x5e, 0x04, 0x8e, 0x61, 0x6e, 0xf2,
+	0xf0, 0x23, 0x1c, 0x9a, 0xf8, 0x42, 0x52, 0x59, 0x95, 0x18, 0x80, 0xf7, 0x5a, 0x4b, 0x6f, 0x44,
+	0x34, 0x29, 0x3e, 0x06, 0x27, 0x16, 0x29, 0xd3, 0xb7, 0x1f, 0x45, 0x0f, 0x3a, 0x13, 0x76, 0x09,
+	0x54, 0x09, 0xd1, 0x85, 0xe1, 0x27, 0xf0, 0x16, 0x3c, 0x93, 0x84, 0x7d, 0x6d, 0x66, 0xbb, 0xc8,
+	0x7e, 0x1a, 0x5a, 0x87, 0xb4, 0x79, 0x73, 0xa6, 0xa5, 0xf7, 0x36, 0x73, 0x37, 0xca, 0x55, 0xfc,
+	0x86, 0xae, 0x58, 0x3d, 0x56, 0x9b, 0x87, 0x1f, 0x0c, 0xfd, 0x59, 0x92, 0x23, 0x82, 0x93, 0x28,
+	0x69, 0x8a, 0x7a, 0x40, 0x74, 0x8c, 0x3e, 0xf4, 0x57, 0xe5, 0xb2, 0x66, 0x54, 0x21, 0x3e, 0x32,
+	0x6b, 0xd7, 0x44, 0xa3, 0xe8, 0x6e, 0x67, 0x00, 0xc5, 0xa9, 0x3c, 0x20, 0xc6, 0x97, 0xdf, 0xb6,
+	0xb9, 0x56, 0xdb, 0x72, 0x5c, 0x7b, 0xd4, 0xd1, 0xbe, 0x01, 0x5a, 0x63, 0x62, 0x51, 0x71, 0xb9,
+	0x65, 0x8c, 0x46, 0x70, 0x02, 0x23, 0x9d, 0xbd, 0xbc, 0xc9, 0x4a, 0x59, 0x06, 0xfd, 0x49, 0x7f,
+	0xea, 0x90, 0x2e, 0xb4, 0xcf, 0x9c, 0xad, 0xb5, 0x0d, 0xf6, 0xac, 0xcd, 0xdd, 0xb3, 0x36, 0x6f,
+	0x7b, 0x6d, 0x27, 0xa7, 0xe0, 0xef, 0xfa, 0x85, 0x23, 0xf0, 0x2e, 0x79, 0xce, 0xc5, 0x77, 0xee,
+	0x5b, 0xe8, 0x42, 0xef, 0x6d, 0xee, 0xdb, 0x08, 0xe0, 0x9e, 0xd3, 0xac, 0x60, 0xa9, 0xdf, 0x8b,
+	0xfe, 0xd8, 0x70, 0xf4, 0xaa, 0x32, 0x6d, 0xe6, 0x9b, 0xe0, 0x33, 0x70, 0x0d, 0x0f, 0xfa, 0xbb,
+	0x8f, 0x7d, 0x7c, 0xff, 0x1f, 0x8f, 0x23, 0xb4, 0xa6, 0x36, 0x3e, 0x51, 0x3f, 0x25, 0x93, 0x88,
+	0x9d, 0xa2, 0xfa, 0x9d, 0x8c, 0x77, 0xb1, 0xb3, 0x24, 0x0f, 0x2d, 0x7c, 0x0a, 0x07, 0xb1, 0x58,
+	0xad, 0x0b, 0x26, 0xd9, 0x2d, 0xba, 0x22, 0x70, 0x63, 0xca, 0x13, 0x56, 0xfc, 0x7f, 0xcf, 0x67,
+	0x57, 0x7f, 0xfe, 0xd3, 0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0xe5, 0x05, 0x22, 0xec, 0x0d, 0x04,
+	0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -261,6 +499,9 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type GuploadServiceClient interface {
 	Upload(ctx context.Context, opts ...grpc.CallOption) (GuploadService_UploadClient, error)
+	Init(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitAck, error)
+	Complete(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitAck, error)
+	Cancel(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitAck, error)
 }
 
 type guploadServiceClient struct {
@@ -305,9 +546,39 @@ func (x *guploadServiceUploadClient) CloseAndRecv() (*UploadStatus, error) {
 	return m, nil
 }
 
+func (c *guploadServiceClient) Init(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitAck, error) {
+	out := new(InitAck)
+	err := c.cc.Invoke(ctx, "/messaging.GuploadService/Init", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *guploadServiceClient) Complete(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitAck, error) {
+	out := new(InitAck)
+	err := c.cc.Invoke(ctx, "/messaging.GuploadService/Complete", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *guploadServiceClient) Cancel(ctx context.Context, in *InitReq, opts ...grpc.CallOption) (*InitAck, error) {
+	out := new(InitAck)
+	err := c.cc.Invoke(ctx, "/messaging.GuploadService/Cancel", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GuploadServiceServer is the server API for GuploadService service.
 type GuploadServiceServer interface {
 	Upload(GuploadService_UploadServer) error
+	Init(context.Context, *InitReq) (*InitAck, error)
+	Complete(context.Context, *InitReq) (*InitAck, error)
+	Cancel(context.Context, *InitReq) (*InitAck, error)
 }
 
 // UnimplementedGuploadServiceServer can be embedded to have forward compatible implementations.
@@ -316,6 +587,15 @@ type UnimplementedGuploadServiceServer struct {
 
 func (*UnimplementedGuploadServiceServer) Upload(srv GuploadService_UploadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Upload not implemented")
+}
+func (*UnimplementedGuploadServiceServer) Init(ctx context.Context, req *InitReq) (*InitAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
+}
+func (*UnimplementedGuploadServiceServer) Complete(ctx context.Context, req *InitReq) (*InitAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Complete not implemented")
+}
+func (*UnimplementedGuploadServiceServer) Cancel(ctx context.Context, req *InitReq) (*InitAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 
 func RegisterGuploadServiceServer(s *grpc.Server, srv GuploadServiceServer) {
@@ -348,10 +628,77 @@ func (x *guploadServiceUploadServer) Recv() (*Chunk, error) {
 	return m, nil
 }
 
+func _GuploadService_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GuploadServiceServer).Init(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messaging.GuploadService/Init",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GuploadServiceServer).Init(ctx, req.(*InitReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GuploadService_Complete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GuploadServiceServer).Complete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messaging.GuploadService/Complete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GuploadServiceServer).Complete(ctx, req.(*InitReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GuploadService_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GuploadServiceServer).Cancel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messaging.GuploadService/Cancel",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GuploadServiceServer).Cancel(ctx, req.(*InitReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _GuploadService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "messaging.GuploadService",
 	HandlerType: (*GuploadServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Init",
+			Handler:    _GuploadService_Init_Handler,
+		},
+		{
+			MethodName: "Complete",
+			Handler:    _GuploadService_Complete_Handler,
+		},
+		{
+			MethodName: "Cancel",
+			Handler:    _GuploadService_Cancel_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Upload",

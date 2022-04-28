@@ -14,9 +14,11 @@ type Client interface {
 	// uploads to a server.
 	// The context should be used in order to cancel uploads
 	// if needed or provide special metadata.
-	UploadFile(ctx context.Context,  r *http.Request) (stats Stats, err error)
+	UploadFile(ctx context.Context, r *http.Request) (stats Stats, err error)
 
 	// Closes releases resources associated with the
 	// instantiation of the client.
 	Close()
+
+	//Init(req entity.InitReq)
 }

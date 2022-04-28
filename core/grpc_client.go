@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"strconv"
 	"time"
 
 	"file_transfer/messaging"
@@ -25,7 +25,7 @@ import (
 type ClientGRPC struct {
 	logger    zerolog.Logger
 	conn      *grpc.ClientConn
-	client    messaging.GuploadServiceClient
+	Client    messaging.GuploadServiceClient
 	chunkSize int
 }
 
@@ -91,7 +91,7 @@ func NewClientGRPC(cfg ClientGRPCConfig) (c ClientGRPC, err error) {
 		return
 	}
 
-	c.client = messaging.NewGuploadServiceClient(c.conn)
+	c.Client = messaging.NewGuploadServiceClient(c.conn)
 
 	return
 }
@@ -102,33 +102,26 @@ func (c *ClientGRPC) UploadFile(ctx context.Context, r *http.Request) (stats Sta
 		buf     []byte
 		n       int
 
-		status  *messaging.UploadStatus
+		status *messaging.UploadStatus
 	)
-	r.ParseMultipartForm(10 << 20)
-	// FormFile returns the first file for the given key `myFile`
-	// it also returns the FileHeader so we can get the Filename,
-	// the Header and the size of the file
-	file, handler, err := r.FormFile("myFile")
+
+	stream, err := c.Client.Upload(ctx)
 	if err != nil {
-		fmt.Println("Error Retrieving the File")
-		fmt.Println(err)
+		err = errors.Wrap(err, "failed to create upload stream for file")
 		return
 	}
-	defer file.Close()
-	fmt.Printf("Uploaded File: %+v\n", handler.Filename)
-	fmt.Printf("File Size: %+v\n", handler.Size)
-	fmt.Printf("MIME Header: %+v\n", handler.Header)
 
-
-	stream, err := c.client.Upload(ctx)
+	index, err := strconv.Atoi(r.FormValue("index"))
 	if err != nil {
-		err = errors.Wrap(err,"failed to create upload stream for file")
+		log.Fatal(err)
 		return
 	}
 	err = stream.Send(&messaging.Chunk{
 		Data: &messaging.Chunk_Info{
-			Info: &messaging.FileInfo{
-				FileType:filepath.Ext(handler.Filename),
+			Info: &messaging.ChunkInfo{
+				UploadID:   r.FormValue("uploadid"),
+				ChunkIndex: uint64(index),
+				CheckHash:  r.FormValue("chkhash"),
 			},
 		},
 	})
@@ -141,7 +134,7 @@ func (c *ClientGRPC) UploadFile(ctx context.Context, r *http.Request) (stats Sta
 	stats.StartedAt = time.Now()
 	buf = make([]byte, c.chunkSize)
 	for writing {
-		n, err = file.Read(buf)
+		n, err = r.Body.Read(buf)
 		if err != nil {
 			if err == io.EOF {
 				writing = false
@@ -155,7 +148,7 @@ func (c *ClientGRPC) UploadFile(ctx context.Context, r *http.Request) (stats Sta
 		}
 
 		err = stream.Send(&messaging.Chunk{
-			Data:&messaging.Chunk_Content{
+			Data: &messaging.Chunk_Content{
 				Content: buf[:n],
 			},
 		})

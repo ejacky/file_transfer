@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"os"
@@ -29,6 +30,8 @@ type ServerGRPC struct {
 	certificate string
 	key         string
 	filePath    chan string
+
+	fileInfo *messaging.FileInfo
 }
 
 type ServerGRPCConfig struct {
@@ -99,15 +102,45 @@ func (s *ServerGRPC) Listen() (err error) {
 	return
 }
 
+func (s *ServerGRPC) Init(ctx context.Context, req *messaging.InitReq) (ack *messaging.InitAck, err error) {
+
+	s.fileInfo = &messaging.FileInfo{
+		FileHash:    req.FileHash,
+		ChunkCount:  uint64(math.Ceil(float64(req.FileSize) / (5 * 1024 * 1024))),
+		FileSize:    req.FileSize,
+		UploadID:    "uploadID",
+		ChunkSize:   5 * 1024 * 1024, // 5MB
+		ChunkExists: []uint64{},
+		FileName:    req.FileName,
+	}
+	ack = &messaging.InitAck{
+		Data: s.fileInfo,
+	}
+
+	return ack, nil
+}
+
+func (s *ServerGRPC) Complete(context.Context, *messaging.InitReq) (*messaging.InitAck, error) {
+	return nil, nil
+}
+
+func (s *ServerGRPC) Cancel(context.Context, *messaging.InitReq) (*messaging.InitAck, error) {
+	return nil, nil
+}
+
 func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err error) {
 	data := bytes.Buffer{}
 	rand.Seed(time.Now().UnixNano())
-	randInt := rand.Int()
 
 	req, err := stream.Recv()
-	fileType := req.GetInfo().FileType
+	if err != nil {
+
+		err = errors.Wrapf(err,
+			"failed unexpectadely while reading chunks from stream")
+		return err
+	}
 	// todo check upload folder exist
-	filePath := fmt.Sprintf("%s/%d%s", "upload", randInt, fileType)
+	filePath := fmt.Sprintf("%s/%d", s.fileInfo.UploadID, req.GetInfo().ChunkIndex)
 	file, err := os.Create(filePath)
 	defer file.Close()
 	for {
