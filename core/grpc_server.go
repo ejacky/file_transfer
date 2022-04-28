@@ -12,11 +12,13 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -30,6 +32,8 @@ type ServerGRPC struct {
 	certificate string
 	key         string
 	filePath    chan string
+
+	destPath string
 
 	fileInfo *messaging.FileInfo
 }
@@ -56,6 +60,8 @@ func NewServerGRPC(cfg ServerGRPCConfig) (s ServerGRPC, err error) {
 	s.certificate = cfg.Certificate
 	s.key = cfg.Key
 	s.filePath = cfg.FilePath
+
+	s.destPath = "dest"
 
 	return
 }
@@ -108,10 +114,9 @@ func (s *ServerGRPC) Init(ctx context.Context, req *messaging.InitReq) (ack *mes
 		FileHash:    req.FileHash,
 		ChunkCount:  uint64(math.Ceil(float64(req.FileSize) / (5 * 1024 * 1024))),
 		FileSize:    req.FileSize,
-		UploadID:    "uploadID",
+		UploadID:    fmt.Sprintf("%x", time.Now().UnixNano()),
 		ChunkSize:   5 * 1024 * 1024, // 5MB
 		ChunkExists: []uint64{},
-		FileName:    req.FileName,
 	}
 	ack = &messaging.InitAck{
 		Data: s.fileInfo,
@@ -120,7 +125,49 @@ func (s *ServerGRPC) Init(ctx context.Context, req *messaging.InitReq) (ack *mes
 	return ack, nil
 }
 
-func (s *ServerGRPC) Complete(context.Context, *messaging.InitReq) (*messaging.InitAck, error) {
+func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (*messaging.CompleteAck, error) {
+	// 合并文件
+	err := os.Mkdir(s.destPath, 0755)
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+
+	destFile, err := os.Create(fmt.Sprintf("%s\\%s", s.destPath, req.FileName))
+	if err != nil {
+		fmt.Println("%v", err)
+		return nil, nil
+	}
+
+	dirInfo, err := ioutil.ReadDir(s.fileInfo.UploadID)
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+	sort.SliceStable(dirInfo, func(i, j int) bool {
+		return dirInfo[i].Name() < dirInfo[j].Name()
+
+	})
+
+	chunk := make([]byte, s.fileInfo.ChunkSize)
+	for _, d := range dirInfo {
+		oFile, err := os.Open(fmt.Sprintf("%s\\%s", s.fileInfo.UploadID, d.Name()))
+		if err != nil {
+			fmt.Println("%v", err)
+			return nil, nil
+		}
+		n, err := oFile.Read(chunk)
+		if err != nil {
+			fmt.Println("%v", err)
+			return nil, nil
+		}
+
+		_, err = destFile.Write(chunk[:n])
+		if err != nil {
+			fmt.Println("%v", err)
+			return nil, nil
+		}
+	}
+	_ = destFile.Close()
+
 	return nil, nil
 }
 
@@ -194,13 +241,14 @@ END:
 		Message: "Upload received with success",
 		Code:    messaging.UploadStatusCode_Ok,
 	})
-	s.filePath <- filePath
 
 	if err != nil {
 		err = errors.Wrapf(err,
 			"failed to send status code")
 		return
 	}
+
+	s.filePath <- filePath
 
 	fmt.Println("upload received success")
 

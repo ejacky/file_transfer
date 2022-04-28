@@ -5,15 +5,51 @@ package messaging;
 service GuploadService {
     rpc Upload(stream Chunk) returns (UploadStatus) {}
     rpc Init(InitReq) returns (InitAck) {}
-    rpc Complete(InitReq) returns (InitAck) {}
+    rpc Complete(CompleteReq) returns (CompleteAck) {}
     rpc Cancel(InitReq) returns (InitAck) {}
+}
+
+
+
+message InitReq {
+
+    uint64 FileSize = 1;
+    string FileHash = 2;
+}
+
+message InitAck {
+  int32 code = 1;
+  string msg = 2;
+  FileInfo data = 3;
+}
+
+message CompleteReq {
+    uint64 FileSize = 1;
+    string FileHash = 2;
+    string FileName = 3;
+    string UploadID = 4;
+}
+
+message CompleteAck {
+    int32 code = 1;
+    string msg = 2;
+    FileInfo data = 3;
+}
+
+message FileInfo {
+    uint64 ChunkSize   = 1;
+    uint64 ChunkCount  = 2;
+    repeated uint64 ChunkExists  = 3; // todo
+    string  UploadID   = 4;
+    uint64 FileSize = 5;
+    string FileHash = 6;
 }
 
 message Chunk {
     oneof data {
         bytes Content = 1;
         ChunkInfo Info = 2;
-      }
+    }
 }
 
 message ChunkInfo {
@@ -32,25 +68,4 @@ enum UploadStatusCode {
 message UploadStatus {
     string Message = 1;
     UploadStatusCode Code = 2;
-}
-
-message InitReq {
-
-    uint64 FileSize = 1;
-    string FileHash = 2;
-}
-
-message InitAck {
-  int32 code = 1;
-  string msg = 2;
-  FileInfo data = 3;
-}
-
-message FileInfo {
-    uint64 ChunkSize   = 1;
-    uint64 ChunkCount  = 2;
-    repeated uint64 ChunkExists  = 3; // todo
-    string  UploadID   = 4;
-    uint64 FileSize = 5;
-    string FileHash = 6;
 }

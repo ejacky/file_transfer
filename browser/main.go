@@ -29,18 +29,6 @@ var (
 	client          core.Client
 )
 
-func init() {
-	grpcClient, err := core.NewClientGRPC(core.ClientGRPCConfig{
-		Address:         address,
-		RootCertificate: rootCertificate,
-		Compress:        compress,
-		ChunkSize:       chunkSize,
-	})
-	must(err)
-	client = &grpcClient
-
-}
-
 func main() {
 
 	// 页面
@@ -67,7 +55,7 @@ func main() {
 	// 接口
 	http.HandleFunc("/file/mpupload/init", mpuploadInit)
 	http.HandleFunc("/file/mpupload/uppart", mpuploadUppart)
-	//http.HandleFunc("/file/mpupload/complete", uploadFile)
+	http.HandleFunc("/file/mpupload/complete", mpuploadComplete)
 	//http.HandleFunc("/file/mpupload/cancel", uploadFile)
 
 	log.Fatal(http.ListenAndServe("localhost:8888", nil))
@@ -81,21 +69,54 @@ func mpuploadInit(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	grpcClient, err := core.NewClientGRPC(core.ClientGRPCConfig{
+		Address:         address,
+		RootCertificate: rootCertificate,
+		Compress:        compress,
+		ChunkSize:       chunkSize,
+	})
+	must(err)
+	client = &grpcClient
+
+	data, err := grpcClient.Client.Init(context.Background(), &messaging.InitReq{
+		FileHash: fileHash,
+		FileSize: uint64(fileSize),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resultOmitEmptyJson(w, data)
+}
+
+func mpuploadUppart(w http.ResponseWriter, r *http.Request) {
+
+	stat, err := client.UploadFile(context.Background(), r)
+	must(err)
+
+	fmt.Printf("%d\n", stat.FinishedAt.Sub(stat.StartedAt).Nanoseconds())
+
+	// return that we have successfully uploaded our file!
+	fmt.Fprintf(w, "Successfully Uploaded Chunk\n")
+}
+
+func mpuploadComplete(w http.ResponseWriter, r *http.Request) {
+	defer client.Close()
+	fileSize, err := strconv.Atoi(r.FormValue("filesize"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	grpcClient, ok := client.(*core.ClientGRPC)
 	if ok {
-		data, err := grpcClient.Client.Init(context.Background(), &messaging.InitReq{
-			FileHash: fileHash,
+		grpcClient.Client.Complete(context.Background(), &messaging.CompleteReq{
+			FileHash: r.FormValue("filehash"),
+			FileName: r.FormValue("filename"),
+			UploadID: r.FormValue("uploadid"),
 			FileSize: uint64(fileSize),
 		})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		resultOmitEmptyJson(w, data)
-	} else {
-		// todo 不支持
-		log.Println("just support grpc")
 	}
+
+	fmt.Fprintf(w, "Successfully Uploaded File\n")
 }
 
 func resultOmitEmptyJson(w http.ResponseWriter, data proto.Message) {
@@ -106,20 +127,6 @@ func resultOmitEmptyJson(w http.ResponseWriter, data proto.Message) {
 		log.Fatal("序列化 proto 失败:", err)
 	}
 }
-
-func mpuploadUppart(w http.ResponseWriter, r *http.Request) {
-
-	stat, err := client.UploadFile(context.Background(), r)
-	must(err)
-	defer client.Close()
-
-	fmt.Printf("%d\n", stat.FinishedAt.Sub(stat.StartedAt).Nanoseconds())
-
-	// return that we have successfully uploaded our file!
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
-}
-
-//!-handler
 
 func must(err error) {
 	if err == nil {
