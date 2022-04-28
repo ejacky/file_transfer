@@ -36,6 +36,10 @@ type ServerGRPC struct {
 	destPath string
 
 	fileInfo *messaging.FileInfo
+
+	finishedChunks  map[string][]uint64    // [uploadId][]chunk
+	finishedFiles   map[string]interface{} // [hash]struct{}{}
+	hashMapUploadId map[string]string      // [hash][uploadId]
 }
 
 type ServerGRPCConfig struct {
@@ -62,6 +66,9 @@ func NewServerGRPC(cfg ServerGRPCConfig) (s ServerGRPC, err error) {
 	s.filePath = cfg.FilePath
 
 	s.destPath = "dest"
+	s.finishedChunks = make(map[string][]uint64)
+	s.finishedFiles = make(map[string]interface{})
+	s.hashMapUploadId = make(map[string]string)
 
 	return
 }
@@ -110,69 +117,39 @@ func (s *ServerGRPC) Listen() (err error) {
 
 func (s *ServerGRPC) Init(ctx context.Context, req *messaging.InitReq) (ack *messaging.InitAck, err error) {
 
+	var (
+		chunkExists []uint64
+		uploadId    string
+		ok          bool
+	)
+
+	if _, ok = s.finishedFiles[req.FileHash]; ok {
+
+		ack.Code = 1006
+		ack.Msg = "file exist"
+		return
+	}
+
+	if uploadId, ok = s.hashMapUploadId[req.FileHash]; ok {
+		chunkExists = s.finishedChunks[uploadId]
+	} else {
+		uploadId = fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+
 	s.fileInfo = &messaging.FileInfo{
 		FileHash:    req.FileHash,
 		ChunkCount:  uint64(math.Ceil(float64(req.FileSize) / (5 * 1024 * 1024))),
 		FileSize:    req.FileSize,
-		UploadID:    fmt.Sprintf("%x", time.Now().UnixNano()),
+		UploadID:    uploadId,
 		ChunkSize:   5 * 1024 * 1024, // 5MB
-		ChunkExists: []uint64{},
+		ChunkExists: chunkExists,
 	}
+
 	ack = &messaging.InitAck{
 		Data: s.fileInfo,
 	}
 
 	return ack, nil
-}
-
-func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (*messaging.CompleteAck, error) {
-	// 合并文件
-	err := os.Mkdir(s.destPath, 0755)
-	if err != nil {
-		fmt.Println("%v", err)
-	}
-
-	destFile, err := os.Create(fmt.Sprintf("%s\\%s", s.destPath, req.FileName))
-	if err != nil {
-		fmt.Println("%v", err)
-		return nil, nil
-	}
-
-	dirInfo, err := ioutil.ReadDir(s.fileInfo.UploadID)
-	if err != nil {
-		fmt.Println("%v", err)
-	}
-	sort.SliceStable(dirInfo, func(i, j int) bool {
-		return dirInfo[i].Name() < dirInfo[j].Name()
-
-	})
-
-	chunk := make([]byte, s.fileInfo.ChunkSize)
-	for _, d := range dirInfo {
-		oFile, err := os.Open(fmt.Sprintf("%s\\%s", s.fileInfo.UploadID, d.Name()))
-		if err != nil {
-			fmt.Println("%v", err)
-			return nil, nil
-		}
-		n, err := oFile.Read(chunk)
-		if err != nil {
-			fmt.Println("%v", err)
-			return nil, nil
-		}
-
-		_, err = destFile.Write(chunk[:n])
-		if err != nil {
-			fmt.Println("%v", err)
-			return nil, nil
-		}
-	}
-	_ = destFile.Close()
-
-	return nil, nil
-}
-
-func (s *ServerGRPC) Cancel(context.Context, *messaging.InitReq) (*messaging.InitAck, error) {
-	return nil, nil
 }
 
 func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err error) {
@@ -248,11 +225,66 @@ END:
 		return
 	}
 
-	s.filePath <- filePath
+	s.finishedChunks[s.fileInfo.UploadID] = append(s.finishedChunks[s.fileInfo.UploadID], req.GetInfo().ChunkIndex)
 
 	fmt.Println("upload received success")
 
 	return
+}
+
+func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (*messaging.CompleteAck, error) {
+	// 合并文件
+	err := os.Mkdir(s.destPath, 0755)
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+
+	destFilePath := fmt.Sprintf("%s\\%s", s.destPath, req.FileName)
+	destFile, err := os.Create(destFilePath)
+	if err != nil {
+		fmt.Println("%v", err)
+		return nil, nil
+	}
+
+	dirInfo, err := ioutil.ReadDir(s.fileInfo.UploadID)
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+	sort.SliceStable(dirInfo, func(i, j int) bool {
+		return dirInfo[i].Name() < dirInfo[j].Name()
+
+	})
+
+	chunk := make([]byte, s.fileInfo.ChunkSize)
+	for _, d := range dirInfo {
+		oFile, err := os.Open(fmt.Sprintf("%s\\%s", s.fileInfo.UploadID, d.Name()))
+		if err != nil {
+			fmt.Println("%v", err)
+			return nil, nil
+		}
+		n, err := oFile.Read(chunk)
+		if err != nil {
+			fmt.Println("%v", err)
+			return nil, nil
+		}
+
+		_, err = destFile.Write(chunk[:n])
+		if err != nil {
+			fmt.Println("%v", err)
+			return nil, nil
+		}
+	}
+	_ = destFile.Close()
+
+	s.finishedFiles[req.FileHash] = struct{}{}
+
+	s.filePath <- destFilePath
+
+	return nil, nil
+}
+
+func (s *ServerGRPC) Cancel(context.Context, *messaging.InitReq) (*messaging.InitAck, error) {
+	return nil, nil
 }
 
 func (s *ServerGRPC) Close() {
