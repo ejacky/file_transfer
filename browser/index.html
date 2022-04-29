@@ -311,9 +311,11 @@
                 res = JSON.parse(data);
             }
             if (res.code == 0 || res.code == 10000) {
-                setTimeout(() => {
-                    window.location.href = "/static/view/home.html";
-                }, 500);
+                alert("upload success!")
+                history.go(0)
+                // setTimeout(() => {
+                //     window.location.href = "/static/view/home.html";
+                // }, 500);
             }
         });
     }

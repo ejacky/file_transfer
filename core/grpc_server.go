@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"file_transfer/messaging"
 	"fmt"
 	"github.com/pkg/errors"
@@ -124,9 +125,11 @@ func (s *ServerGRPC) Init(ctx context.Context, req *messaging.InitReq) (ack *mes
 	)
 
 	if _, ok = s.finishedFiles[req.FileHash]; ok {
+		ack = &messaging.InitAck{
+			Code: 1006,
+			Msg:  "file exist",
+		}
 
-		ack.Code = 1006
-		ack.Msg = "file exist"
 		return
 	}
 
@@ -166,7 +169,10 @@ func (s *ServerGRPC) Upload(stream messaging.GuploadService_UploadServer) (err e
 	// todo check upload folder exist
 	err = os.Mkdir(s.fileInfo.UploadID, 0755)
 	if err != nil {
-		fmt.Println("%v", err)
+		if _, ok := err.(*os.PathError); !ok {
+			fmt.Printf("%v\n", err)
+			return
+		}
 	}
 
 	filePath := fmt.Sprintf("%s/%d", s.fileInfo.UploadID, req.GetInfo().ChunkIndex)
@@ -225,62 +231,96 @@ END:
 		return
 	}
 
+	file.Close()
+	chunkHash := calcSha1(filePath)
+	//chunkHash := calcSha1ByFile(file)
+	if chunkHash != req.GetInfo().CheckHash {
+		fmt.Printf("%d check hash failure. origin hash:%s, calcSha1:%s\n", req.GetInfo().ChunkIndex, req.GetInfo().CheckHash, chunkHash)
+		return
+	}
+
 	s.finishedChunks[s.fileInfo.UploadID] = append(s.finishedChunks[s.fileInfo.UploadID], req.GetInfo().ChunkIndex)
 
-	fmt.Println("upload received success")
+	fmt.Printf("upload received success, uploadId:%s, index:%d\n", req.GetInfo().UploadID, req.GetInfo().ChunkIndex)
 
 	return
 }
 
-func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (*messaging.CompleteAck, error) {
+func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (ack *messaging.CompleteAck, err error) {
 	// 合并文件
-	err := os.Mkdir(s.destPath, 0755)
+	err = os.Mkdir(s.destPath, 0755)
 	if err != nil {
-		fmt.Println("%v", err)
+		if _, ok := err.(*os.PathError); !ok {
+			fmt.Printf("%v\n", err)
+			return
+		}
 	}
 
 	destFilePath := fmt.Sprintf("%s\\%s", s.destPath, req.FileName)
 	destFile, err := os.Create(destFilePath)
 	if err != nil {
-		fmt.Println("%v", err)
-		return nil, nil
+		fmt.Printf("%v\n", err)
+		return
 	}
+
+	defer destFile.Close()
 
 	dirInfo, err := ioutil.ReadDir(s.fileInfo.UploadID)
 	if err != nil {
-		fmt.Println("%v", err)
+		fmt.Printf("%v", err)
 	}
 	sort.SliceStable(dirInfo, func(i, j int) bool {
 		return dirInfo[i].Name() < dirInfo[j].Name()
-
 	})
 
 	chunk := make([]byte, s.fileInfo.ChunkSize)
 	for _, d := range dirInfo {
-		oFile, err := os.Open(fmt.Sprintf("%s\\%s", s.fileInfo.UploadID, d.Name()))
+		var (
+			oFile *os.File
+			n     int
+		)
+		oFile, err = os.Open(fmt.Sprintf("%s\\%s", s.fileInfo.UploadID, d.Name()))
 		if err != nil {
-			fmt.Println("%v", err)
-			return nil, nil
+			fmt.Printf("%v", err)
+			return
 		}
-		n, err := oFile.Read(chunk)
+		n, err = oFile.Read(chunk)
 		if err != nil {
-			fmt.Println("%v", err)
-			return nil, nil
+			fmt.Printf("%v", err)
+			return
 		}
 
 		_, err = destFile.Write(chunk[:n])
 		if err != nil {
-			fmt.Println("%v", err)
-			return nil, nil
+			fmt.Printf("%v", err)
+			return
 		}
 	}
-	_ = destFile.Close()
+
+	destFile.Close()
+	fileHash := calcSha1(destFilePath)
+	//fileHash := calcSha1ByFile(destFile)
+	if fileHash != req.FileHash {
+		ack = &messaging.CompleteAck{
+			Code: -2,
+			Msg:  fmt.Sprintf("%s check hash failure, originHash:%s, fileHash:%s", req.UploadID, req.FileHash, fileHash),
+		}
+		fmt.Printf(ack.Msg)
+		return
+	}
+
+	fmt.Printf("merge file  success, uploadId:%s\n", req.UploadID)
 
 	s.finishedFiles[req.FileHash] = struct{}{}
 
 	s.filePath <- destFilePath
 
-	return nil, nil
+	ack = &messaging.CompleteAck{
+		Code: 0,
+		Msg:  fmt.Sprintf("%s upload success", req.UploadID),
+	}
+
+	return
 }
 
 func (s *ServerGRPC) Cancel(context.Context, *messaging.InitReq) (*messaging.InitAck, error) {
@@ -311,4 +351,27 @@ func logError(err error) error {
 		log.Print(err)
 	}
 	return err
+}
+
+func calcSha1(filePath string) string {
+
+	infile, inerr := os.Open(filePath)
+	if inerr == nil {
+
+		sha1h := sha1.New()
+		io.Copy(sha1h, infile)
+		return fmt.Sprintf("%x", sha1h.Sum([]byte("")))
+
+	} else {
+		fmt.Println(inerr)
+		return ""
+	}
+}
+
+func calcSha1ByFile(infile *os.File) string {
+	infile.Seek(0, 0)
+
+	sha1h := sha1.New()
+	io.Copy(sha1h, infile)
+	return fmt.Sprintf("%x", sha1h.Sum([]byte("")))
 }

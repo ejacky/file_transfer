@@ -108,15 +108,20 @@ func mpuploadComplete(w http.ResponseWriter, r *http.Request) {
 	}
 	grpcClient, ok := client.(*core.ClientGRPC)
 	if ok {
-		grpcClient.Client.Complete(context.Background(), &messaging.CompleteReq{
+		data, err := grpcClient.Client.Complete(context.Background(), &messaging.CompleteReq{
 			FileHash: r.FormValue("filehash"),
 			FileName: r.FormValue("filename"),
 			UploadID: r.FormValue("uploadid"),
 			FileSize: uint64(fileSize),
 		})
-	}
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
+		resultOmitEmptyJson(w, data)
+	} else {
+		fmt.Fprintf(w, "doesn't support protocal type \n")
+	}
 }
 
 func resultOmitEmptyJson(w http.ResponseWriter, data proto.Message) {

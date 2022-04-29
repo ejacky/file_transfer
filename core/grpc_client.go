@@ -139,12 +139,17 @@ func (c *ClientGRPC) UploadFile(ctx context.Context, r *http.Request) (stats Sta
 			if err == io.EOF {
 				writing = false
 				err = nil
-				continue
+
+				// 未读出字节，跳出 for 循环
+				if n == 0 {
+					continue
+				}
+			} else {
+				err = errors.Wrapf(err,
+					"errored while copying from file to buf")
+				return
 			}
 
-			err = errors.Wrapf(err,
-				"errored while copying from file to buf")
-			return
 		}
 
 		err = stream.Send(&messaging.Chunk{
