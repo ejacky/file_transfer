@@ -297,7 +297,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 		}
 	}
 
-	destFile.Close()
+	destFile.Close() // todo
 	fileHash := calcSha1(destFilePath)
 	//fileHash := calcSha1ByFile(destFile)
 	if fileHash != req.FileHash {
@@ -319,6 +319,11 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 		Code: 0,
 		Msg:  fmt.Sprintf("%s upload success", req.UploadID),
 	}
+
+	// todo 移除 chunk 文件夹
+	go func() {
+
+	}()
 
 	return
 }

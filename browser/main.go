@@ -109,6 +109,7 @@ func mpuploadComplete(w http.ResponseWriter, r *http.Request) {
 	grpcClient, ok := client.(*core.ClientGRPC)
 	if ok {
 		data, err := grpcClient.Client.Complete(context.Background(), &messaging.CompleteReq{
+			//todo 校验必填
 			FileHash: r.FormValue("filehash"),
 			FileName: r.FormValue("filename"),
 			UploadID: r.FormValue("uploadid"),
