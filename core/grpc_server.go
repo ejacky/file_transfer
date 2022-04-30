@@ -13,13 +13,11 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
 	"net"
 	"os"
-	"sort"
 	"strconv"
 	"time"
 
@@ -248,56 +246,56 @@ END:
 
 func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (ack *messaging.CompleteAck, err error) {
 	// 合并文件
-	err = os.Mkdir(s.destPath, 0755)
+	err = os.MkdirAll(s.destPath, 0755)
 	if err != nil {
-		if _, ok := err.(*os.PathError); !ok {
-			fmt.Printf("%v\n", err)
-			return
-		}
+		fmt.Println("%v", err)
 	}
-
 	destFilePath := fmt.Sprintf("%s\\%s", s.destPath, req.FileName)
-	destFile, err := os.Create(destFilePath)
+	_, err = os.Create(destFilePath)
 	if err != nil {
 		fmt.Printf("%v\n", err)
-		return
+		return nil, err
+	}
+
+	destFile, err := os.OpenFile(destFilePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		fmt.Println("%v", err)
+		return nil, err
 	}
 
 	defer destFile.Close()
 
-	dirInfo, err := ioutil.ReadDir(s.fileInfo.UploadID)
-	if err != nil {
-		fmt.Printf("%v", err)
-	}
-	sort.SliceStable(dirInfo, func(i, j int) bool {
-		return dirInfo[i].Name() < dirInfo[j].Name()
-	})
-
+	var i uint64 = 1
 	chunk := make([]byte, s.fileInfo.ChunkSize)
-	for _, d := range dirInfo {
-		var (
-			oFile *os.File
-			n     int
-		)
-		oFile, err = os.Open(fmt.Sprintf("%s\\%s", s.fileInfo.UploadID, d.Name()))
+	for ; i <= s.fileInfo.ChunkCount; i++ {
+		oFile, err := os.Open(fmt.Sprintf("%s\\%d", s.fileInfo.UploadID, i))
 		if err != nil {
 			fmt.Printf("%v", err)
-			return
+			return nil, nil
 		}
-		n, err = oFile.Read(chunk)
-		if err != nil {
-			fmt.Printf("%v", err)
-			return
-		}
+		defer oFile.Close()
 
-		_, err = destFile.Write(chunk[:n])
-		if err != nil {
-			fmt.Printf("%v", err)
-			return
+		for {
+			n, err := oFile.Read(chunk)
+
+			if err != nil && err != io.EOF {
+				fmt.Println("%v", err)
+				return nil, err
+			}
+
+			if n == 0 {
+				break
+			}
+
+			_, err = destFile.Write(chunk[:n])
+			if err != nil {
+				fmt.Println("%v", err)
+				return nil, err
+			}
+			destFile.Sync()
 		}
 	}
 
-	destFile.Close() // todo
 	fileHash := calcSha1(destFilePath)
 	//fileHash := calcSha1ByFile(destFile)
 	if fileHash != req.FileHash {
@@ -320,9 +318,9 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 		Msg:  fmt.Sprintf("%s upload success", req.UploadID),
 	}
 
-	// todo 移除 chunk 文件夹
+	// 移除 chunk 文件夹
 	go func() {
-
+		os.RemoveAll(s.fileInfo.UploadID)
 	}()
 
 	return
