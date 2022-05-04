@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strconv"
@@ -17,7 +17,7 @@ func main() {
 		panic(err)
 	}
 	defer connection.Close()
-	fmt.Println("Connected to server, start receiving the file name and file size")
+	log.Println("Connected to server, start receiving the file name and file size")
 	for {
 		bufferFileName := make([]byte, 64)
 		bufferFileSize := make([]byte, 10)
@@ -28,7 +28,7 @@ func main() {
 		connection.Read(bufferFileName)
 		fileName := strings.Trim(string(bufferFileName), ":")
 
-		fmt.Printf("download filename and filesize!\nfilesize:%s,filename:%s\n", bufferFileSize,bufferFileName)
+		log.Printf("download filename and filesize!\nfilesize:%s,filename:%s\n", bufferFileSize, bufferFileName)
 
 		newFile, err := os.Create(fileName)
 
@@ -51,5 +51,5 @@ func main() {
 		newFile.Close()
 	}
 
-	fmt.Println("Received file completely!")
+	log.Println("Received file completely!")
 }

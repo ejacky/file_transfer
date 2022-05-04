@@ -5,12 +5,12 @@ import (
 	"file_transfer/core"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strconv"
 	"sync"
 	"time"
-	"log"
 )
 
 const BUFFERSIZE = 1024
@@ -36,7 +36,7 @@ func uploadServer(wg *sync.WaitGroup) {
 		key         = ""
 		certificate = ""
 		server      core.Server
-		err error
+		err         error
 	)
 
 	switch {
@@ -111,10 +111,10 @@ func downloadServer(wg *sync.WaitGroup) {
 	for {
 		connection, err := server.Accept()
 		if err != nil {
-			fmt.Println("Error: ", err)
+			log.Fatalf("Error: %v", err)
 			os.Exit(1)
 		}
-		fmt.Println("Client connected")
+		log.Println("Client connected")
 		go handleConn(connection)
 
 	}
@@ -136,7 +136,7 @@ func trace(msg string) func() {
 }
 
 func sendFileToClient(connection net.Conn, ch chan string) {
-	fmt.Println("A client has connected!")
+	log.Println("A client has connected!")
 
 	for filepath := range ch {
 		file, err := os.Open(filepath)
@@ -151,7 +151,7 @@ func sendFileToClient(connection net.Conn, ch chan string) {
 		}
 		fileSize := fillString(strconv.FormatInt(fileInfo.Size(), 10), 10)
 		fileName := fillString(fileInfo.Name(), 64)
-		fmt.Printf("Sending filename and filesize!\nfilesize:%s,filename:%s\n", []byte(fileSize),[]byte(fileName))
+		fmt.Printf("Sending filename and filesize!\nfilesize:%s,filename:%s\n", []byte(fileSize), []byte(fileName))
 		connection.Write([]byte(fileSize))
 		connection.Write([]byte(fileName))
 		sendBuffer := make([]byte, BUFFERSIZE)
@@ -187,7 +187,6 @@ func must(err error) {
 		return
 	}
 
-	fmt.Printf("ERROR: %+v\n", err)
+	log.Printf("ERROR: %+v\n", err)
 	os.Exit(1)
 }
-
