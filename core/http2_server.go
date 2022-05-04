@@ -85,7 +85,7 @@ func (s *ServerH2) Upload(w http.ResponseWriter, r *http.Request) {
 			Msg("failed to copy body into buf")
 
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "%+v", err)
+		fmt.Fprintf(w, "%+v", err)
 		return
 	}
 

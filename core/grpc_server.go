@@ -18,11 +18,14 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
 
 	_ "google.golang.org/grpc/encoding/gzip"
 )
+
+const DEBUG = true
 
 type ServerGRPC struct {
 	logger      zerolog.Logger
@@ -124,7 +127,7 @@ func (s *ServerGRPC) Init(ctx context.Context, req *messaging.InitReq) (ack *mes
 
 	if _, ok = s.finishedFiles[req.FileHash]; ok {
 		ack = &messaging.InitAck{
-			Code: 1006,
+			Code: 10006,
 			Msg:  "file exist",
 		}
 
@@ -229,8 +232,7 @@ END:
 		return
 	}
 
-	file.Close()
-	chunkHash := calcSha1(filePath)
+	chunkHash := calcChunkSha1(filePath)
 	//chunkHash := calcSha1ByFile(file)
 	if chunkHash != req.GetInfo().CheckHash {
 		fmt.Printf("%d check hash failure. origin hash:%s, calcSha1:%s\n", req.GetInfo().ChunkIndex, req.GetInfo().CheckHash, chunkHash)
@@ -248,7 +250,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 	// 合并文件
 	err = os.MkdirAll(s.destPath, 0755)
 	if err != nil {
-		fmt.Println("%v", err)
+		fmt.Printf("%v", err)
 	}
 	destFilePath := fmt.Sprintf("%s\\%s", s.destPath, req.FileName)
 	_, err = os.Create(destFilePath)
@@ -259,7 +261,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 
 	destFile, err := os.OpenFile(destFilePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
-		fmt.Println("%v", err)
+		fmt.Printf("%v", err)
 		return nil, err
 	}
 
@@ -279,7 +281,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 			n, err := oFile.Read(chunk)
 
 			if err != nil && err != io.EOF {
-				fmt.Println("%v", err)
+				fmt.Printf("%v", err)
 				return nil, err
 			}
 
@@ -289,14 +291,14 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 
 			_, err = destFile.Write(chunk[:n])
 			if err != nil {
-				fmt.Println("%v", err)
+				fmt.Printf("%v", err)
 				return nil, err
 			}
 			destFile.Sync()
 		}
 	}
 
-	fileHash := calcSha1(destFilePath)
+	fileHash := calcFileSha1(destFilePath)
 	//fileHash := calcSha1ByFile(destFile)
 	if fileHash != req.FileHash {
 		ack = &messaging.CompleteAck{
@@ -319,9 +321,11 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 	}
 
 	// 移除 chunk 文件夹
-	go func() {
-		os.RemoveAll(s.fileInfo.UploadID)
-	}()
+	if DEBUG == false {
+		go func() {
+			os.RemoveAll(s.fileInfo.UploadID)
+		}()
+	}
 
 	return
 }
@@ -356,7 +360,14 @@ func logError(err error) error {
 	return err
 }
 
-func calcSha1(filePath string) string {
+func calcChunkSha1(filePath string) string {
+	fileHash := calcFileSha1(filePath)
+
+	reg := regexp.MustCompile("\\s+")
+	return reg.ReplaceAllString(string(fileHash), "")
+}
+
+func calcFileSha1(filePath string) string {
 
 	infile, inerr := os.Open(filePath)
 	if inerr == nil {
@@ -378,3 +389,23 @@ func calcSha1ByFile(infile *os.File) string {
 	io.Copy(sha1h, infile)
 	return fmt.Sprintf("%x", sha1h.Sum([]byte("")))
 }
+
+//const (
+//	// FileSha1CMD : 计算文件sha1值
+//	FileSha1CMD = `
+//	#!/bin/bash
+//	sha1sum $1 | awk '{print $1}'
+//	`
+//)
+
+//func ComputeSha1ByShell(destPath string) (string, error) {
+//	cmdStr := strings.Replace(FileSha1CMD, "$1", destPath, 1)
+//	hashCmd := exec.Command("bash", "-c", cmdStr)
+//	if filehash, err := hashCmd.Output(); err != nil {
+//		fmt.Println(err)
+//		return "", err
+//	} else {
+//		reg := regexp.MustCompile("\\s+")
+//		return reg.ReplaceAllString(string(filehash), ""), nil
+//	}
+//}
