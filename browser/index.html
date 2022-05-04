@@ -71,6 +71,30 @@
     var uploadHost = "localhost:8888";
     localStorage.setItem("uploadEntry", uploadHost);
 
+    String.prototype.hexEncode = function(){
+        var hex, i;
+
+        var result = "";
+        for (i=0; i<this.length; i++) {
+            hex = this.charCodeAt(i).toString(16);
+            //result += ("000"+hex).slice(-4);
+            result += hex
+        }
+
+        return result
+    }
+
+    String.prototype.hexDecode = function(){
+        var j;
+        var hexes = this.match(/.{1,4}/g) || [];
+        var back = "";
+        for(j = 0; j<hexes.length; j++) {
+            back += String.fromCharCode(parseInt(hexes[j], 16));
+        }
+
+        return back;
+    }
+
     $("body").on("click", "#submit", function() {
         let files = document.querySelector("#fileinput").files;
         if (!files.length) {
@@ -185,6 +209,12 @@
 
             fileReader.onload = function(e) {
                 let content = e.target.result;
+                // console.log("currentChunk", currentChunk)
+                // console.log(content.hexEncode())
+
+                console.log(
+                    `currentChunk: ${currentChunk} chunkSize: ${content.length}`
+                );
 
                 // 计算当前分块sha1
                 var tmpMD = forge.md.sha1.create();
@@ -214,11 +244,13 @@
                     currentChunk++;
                     loadNext();
                 } else {
-                    let start = currentChunk * upInitRes.ChunkSize;
+                    let ChunkSize = parseInt(upInitRes.ChunkSize)
+                    let start = currentChunk * ChunkSize;
                     let end =
-                        start + upInitRes.ChunkSize >= file.size ?
+                        (start + ChunkSize) >= file.size ?
                             file.size :
-                            start + upInitRes.ChunkSize;
+                            (start + ChunkSize);
+                    console.log("start:"+start, "end:"+end, "end-start:" + (end-start))
                     fileReader.readAsBinaryString(
                         blobSlice.apply(file, [start, end])
                     );
