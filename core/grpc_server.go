@@ -25,7 +25,7 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip"
 )
 
-const DEBUG = true
+const DEBUG = false
 
 type ServerGRPC struct {
 	logger      zerolog.Logger
@@ -82,7 +82,7 @@ func (s *ServerGRPC) Listen() (err error) {
 		grpcCreds credentials.TransportCredentials
 	)
 
-	fmt.Println("grpc server address, ", "localhost:"+strconv.Itoa(s.port))
+	log.Println("grpc server address, ", "localhost:"+strconv.Itoa(s.port))
 	listener, err = net.Listen("tcp", "localhost:"+strconv.Itoa(s.port))
 
 	if err != nil {
@@ -235,13 +235,13 @@ END:
 	chunkHash := calcChunkSha1(filePath)
 	//chunkHash := calcSha1ByFile(file)
 	if chunkHash != req.GetInfo().CheckHash {
-		fmt.Printf("%d check hash failure. origin hash:%s, calcSha1:%s\n", req.GetInfo().ChunkIndex, req.GetInfo().CheckHash, chunkHash)
+		log.Fatalf("%d check hash failure. origin hash:%s, calcSha1:%s\n", req.GetInfo().ChunkIndex, req.GetInfo().CheckHash, chunkHash)
 		return
 	}
 
 	s.finishedChunks[s.fileInfo.UploadID] = append(s.finishedChunks[s.fileInfo.UploadID], req.GetInfo().ChunkIndex)
 
-	fmt.Printf("upload received success, uploadId:%s, index:%d\n", req.GetInfo().UploadID, req.GetInfo().ChunkIndex)
+	log.Printf("upload received success, uploadId:%s, index:%d\n", req.GetInfo().UploadID, req.GetInfo().ChunkIndex)
 
 	return
 }
@@ -255,13 +255,13 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 	destFilePath := fmt.Sprintf("%s\\%s", s.destPath, req.FileName)
 	_, err = os.Create(destFilePath)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		log.Fatalf("%v\n", err)
 		return nil, err
 	}
 
 	destFile, err := os.OpenFile(destFilePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
-		fmt.Printf("%v", err)
+		log.Fatalf("%v", err)
 		return nil, err
 	}
 
@@ -272,7 +272,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 	for ; i <= s.fileInfo.ChunkCount; i++ {
 		oFile, err := os.Open(fmt.Sprintf("%s\\%d", s.fileInfo.UploadID, i))
 		if err != nil {
-			fmt.Printf("%v", err)
+			log.Fatalf("%v", err)
 			return nil, nil
 		}
 		defer oFile.Close()
@@ -281,7 +281,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 			n, err := oFile.Read(chunk)
 
 			if err != nil && err != io.EOF {
-				fmt.Printf("%v", err)
+				log.Fatalf("%v", err)
 				return nil, err
 			}
 
@@ -291,7 +291,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 
 			_, err = destFile.Write(chunk[:n])
 			if err != nil {
-				fmt.Printf("%v", err)
+				log.Fatalf("%v", err)
 				return nil, err
 			}
 			destFile.Sync()
@@ -309,7 +309,7 @@ func (s *ServerGRPC) Complete(ctx context.Context, req *messaging.CompleteReq) (
 		return
 	}
 
-	fmt.Printf("merge file  success, uploadId:%s\n", req.UploadID)
+	log.Printf("merge file  success, uploadId:%s\n", req.UploadID)
 
 	s.finishedFiles[req.FileHash] = struct{}{}
 
