@@ -389,23 +389,3 @@ func calcSha1ByFile(infile *os.File) string {
 	io.Copy(sha1h, infile)
 	return fmt.Sprintf("%x", sha1h.Sum([]byte("")))
 }
-
-//const (
-//	// FileSha1CMD : 计算文件sha1值
-//	FileSha1CMD = `
-//	#!/bin/bash
-//	sha1sum $1 | awk '{print $1}'
-//	`
-//)
-
-//func ComputeSha1ByShell(destPath string) (string, error) {
-//	cmdStr := strings.Replace(FileSha1CMD, "$1", destPath, 1)
-//	hashCmd := exec.Command("bash", "-c", cmdStr)
-//	if filehash, err := hashCmd.Output(); err != nil {
-//		fmt.Println(err)
-//		return "", err
-//	} else {
-//		reg := regexp.MustCompile("\\s+")
-//		return reg.ReplaceAllString(string(filehash), ""), nil
-//	}
-//}
