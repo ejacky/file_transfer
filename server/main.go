@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -91,7 +92,7 @@ func broadcaster() {
 			clients[cli] = true
 
 		case cli := <-leaving:
-			fmt.Println("one connection leave.")
+			log.Println("one connection leave.")
 			delete(clients, cli)
 			close(cli)
 		}
@@ -127,6 +128,28 @@ func handleConn(conn net.Conn) {
 
 	go sendFileToClient(conn, ch)
 	entering <- ch
+
+	//
+	one := make([]byte, 1)
+	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	for {
+		_, err := conn.Read(one)
+		if err == io.EOF {
+			log.Println("linux connect close ")
+			goto LEAVING
+		} else if opErr, ok := err.(*net.OpError); ok {
+			if syscallErr, ok := opErr.Err.(*os.SyscallError); ok {
+				if se, ok := syscallErr.Err.(syscall.Errno); ok && se == syscall.WSAECONNRESET {
+					log.Printf("windows connect close %s", err)
+					goto LEAVING
+				}
+			}
+		}
+		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	}
+
+LEAVING:
+	leaving <- ch
 }
 
 func trace(msg string) func() {
@@ -161,12 +184,14 @@ func sendFileToClient(connection net.Conn, ch chan string) {
 			if err == io.EOF {
 				break
 			}
-			connection.Write(sendBuffer)
+			_, err = connection.Write(sendBuffer)
+			if err == io.EOF {
+
+			}
 		}
 		file.Close()
 	}
-	fmt.Println("File has been sent, closing connection!")
-	leaving <- ch // todo 无法真正关闭
+	//fmt.Println("File has been sent, closing connection!")
 	return
 }
 
