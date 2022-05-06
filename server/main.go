@@ -131,8 +131,8 @@ func handleConn(conn net.Conn) {
 
 	//
 	one := make([]byte, 1)
-	conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	for {
+		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 		_, err := conn.Read(one)
 		if err == io.EOF {
 			log.Println("linux connect close ")
@@ -145,7 +145,6 @@ func handleConn(conn net.Conn) {
 				}
 			}
 		}
-		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	}
 
 LEAVING:
