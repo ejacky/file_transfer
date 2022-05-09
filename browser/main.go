@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
+	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,13 +22,25 @@ import (
 )
 
 var (
+	address         string
+	serverAddress   string
 	chunkSize       = 1 << 12
 	http2           = false
-	address         = "localhost:8877"
 	rootCertificate = ""
 	compress        = false
 	client          core.Client
 )
+
+func init() {
+	cfg, err := ini.Load("conf/app.conf")
+	if err != nil {
+		fmt.Printf("Fail to read file: %v", err)
+		os.Exit(1)
+	}
+	address = cfg.Section("browser").Key("address").String()
+	serverAddress = cfg.Section("server").Key("address").String()
+
+}
 
 func main() {
 
@@ -58,7 +71,7 @@ func main() {
 	http.HandleFunc("/file/mpupload/complete", mpuploadComplete)
 	//http.HandleFunc("/file/mpupload/cancel", uploadFile)
 
-	log.Fatal(http.ListenAndServe("localhost:8888", nil))
+	log.Fatal(http.ListenAndServe(address, nil))
 }
 
 func mpuploadInit(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +83,7 @@ func mpuploadInit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grpcClient, err := core.NewClientGRPC(core.ClientGRPCConfig{
-		Address:         address,
+		Address:         serverAddress,
 		RootCertificate: rootCertificate,
 		Compress:        compress,
 		ChunkSize:       chunkSize,

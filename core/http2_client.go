@@ -8,6 +8,8 @@ import (
 	"golang.org/x/net/http2"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"time"
 )
 
 // ClientH2 provides the implementation of a file
@@ -63,8 +65,42 @@ func NewClientH2(cfg ClientH2Config) (c ClientH2, err error) {
 	return
 }
 
-func (c *ClientH2) UploadFile(ctx context.Context, r *http.Request) (stats Stats, err error) {
-	return Stats{}, nil
+func (c *ClientH2) UploadFile(ctx context.Context, f string) (stats Stats, err error) {
+	var (
+		file *os.File
+	)
+
+	file, err = os.Open(f)
+	if err != nil {
+		err = errors.Wrapf(err,
+			"failed to open file %s", f)
+		return
+	}
+	defer file.Close()
+
+	req, err := http.NewRequest("POST", c.address+"/upload", file)
+	if err != nil {
+		err = errors.Wrapf(err,
+			"failed to create POST request")
+		return
+	}
+
+	stats.StartedAt = time.Now()
+	resp, err := c.client.Do(req)
+	if err != nil {
+		err = errors.Wrapf(err,
+			"request failed")
+		return
+	}
+	stats.FinishedAt = time.Now()
+
+	if resp.StatusCode != 200 {
+		err = errors.Errorf("request failed - status code: %d",
+			resp.StatusCode)
+		return
+	}
+
+	return
 
 }
 
